@@ -1,0 +1,14 @@
+[package]
+name = "heimdall"
+version = "0.1.0"
+authors = ["Michael Craggs <m.e.craggs@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+futures = { package = "futures-preview", version = "0.3.0-alpha.19", features = ["async-await", "compat", "io-compat", "std"] }
+futures-util = { version = "0.2" }
+structopt = "0.2"
+tokio = { version = "0.2.0-alpha.6" }
+tokio-io = { version = "0.2.0-alpha.6", features=["util"] }
+tokio-net = { version = "0.2.0-alpha.6", features = ["tcp", "async-traits"]}
+tokio-rustls = { git = "https://github.com/quininer/tokio-rustls.git", branch="tokio-0.2-tmp" }

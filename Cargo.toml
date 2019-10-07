@@ -5,9 +5,11 @@ authors = ["Michael Craggs <m.e.craggs@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+bytes = "0.4"
 futures = { package = "futures-preview", version = "0.3.0-alpha.19", features = ["async-await", "compat", "io-compat", "std"] }
 futures-util = { version = "0.2" }
 httparse = "1.3"
+http = "0.1"
 pretty-hex = "0.1"
 native-tls = "0.2"
 structopt = "0.2"

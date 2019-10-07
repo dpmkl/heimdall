@@ -1,4 +1,5 @@
-use httparse::{parse_headers, Request, Response, Status as HttpStatus};
+//use httparse::{parse_headers, Request, Response, Status as HttpStatus};
+use bytes::BytesMut;
 use native_tls;
 use native_tls::Identity;
 use pretty_hex::*;
@@ -15,16 +16,9 @@ use futures_util::StreamExt;
 use tokio_io::{AsyncReadExt, AsyncWriteExt, BufMut};
 use tokio_net::tcp::{TcpListener, TcpStream};
 use tokio_tls::TlsAcceptor;
+use http::{Request, Response};
 
-// fn load_certs(path: &Path) -> io::Result<Vec<Certificate>> {
-//     certs(&mut BufReader::new(File::open(path)?))
-//         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid cert"))
-// }
 
-// fn load_keys(path: &Path) -> io::Result<Vec<PrivateKey>> {
-//     rsa_private_keys(&mut BufReader::new(File::open(path)?))
-//         .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid key"))
-// }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -44,6 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let tcp = match listener.accept().await {
             Ok((tcp, _)) => tcp,
             Err(err) => {
+                println!("Failed TCP handeshake! {}", err);
                 continue;
             }
         };
@@ -55,10 +50,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     return;
                 }
             };
-            let mut buff = [0; 1024];
+            let mut buff = BytesMut::with_capacity(2048);
             match stream.read(&mut buff).await {
-                Ok(size) => {
-                    println!("Data({}): {:?}", size, buff.to_vec().hex_dump());
+                Ok(size) => {                    
+                    let req = Request::new(buff);
+                    println!("Data: {} {} {:?}", req.method(), req.uri(), req.version());
+                    println!("Body: {:?}", req.body());
+
                 }
                 Err(err) => {
                     println!("Error: {}", err);

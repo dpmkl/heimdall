@@ -39,6 +39,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     loop {
+        let tls = tls.clone();
         println!("loop"); 
         let tcp = match listener.accept().await {
             Ok((tcp, _)) => tcp,
@@ -46,17 +47,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 continue;
             }
         };
-        let mut stream = tls.accept(tcp).await?;
-        let mut buff = [0; 1024];
-        match stream.read(&mut buff).await {
-            Ok(size) => {
-                println!("Data({}): {:?}", size, buff.to_vec().hex_dump());
+        tokio::spawn( async move {
+            let mut stream = match tls.accept(tcp).await {
+                Ok(stream) => stream,
+                Err(err) => {
+                    println!("Failed TLS handshake! {}", err);
+                    return;
+                }
+            };
+            let mut buff = [0; 1024];
+            match stream.read(&mut buff).await {
+                Ok(size) => {
+                    println!("Data({}): {:?}", size, buff.to_vec().hex_dump());
+                }
+                Err(err) => {
+                    println!("Error: {}", err);
+                }
             }
-            Err(err) => {
-                println!("Error: {}", err);
-            }
-        }
-        stream.flush().await;
+        });
     }
 
 

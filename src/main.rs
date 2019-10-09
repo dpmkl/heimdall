@@ -1,5 +1,5 @@
-//use httparse::{parse_headers, Request, Response, Status as HttpStatus};
 use bytes::BytesMut;
+use httparse::{parse_headers, Request, Response, Status as HttpStatus};
 use native_tls;
 use native_tls::Identity;
 use pretty_hex::*;
@@ -14,11 +14,14 @@ use futures_util::StreamExt;
 // use tokio::prelude::*;
 // use tokio_io::BufMut;
 use tokio_io::{AsyncReadExt, AsyncWriteExt, BufMut};
-use tokio_net::tcp::{TcpListener, TcpStream};
+use tokio_net::tcp::TcpListener;
 use tokio_tls::TlsAcceptor;
-use http::{Request, Response};
 
+#[macro_use]
+extern crate lazy_static;
 
+mod router;
+mod util;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -34,15 +37,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     loop {
         let tls = tls.clone();
-        println!("loop"); 
+        println!("loop");
         let tcp = match listener.accept().await {
-            Ok((tcp, _)) => tcp,
+            Ok((tcp, peer_addr)) => tcp,
             Err(err) => {
                 println!("Failed TCP handeshake! {}", err);
                 continue;
             }
         };
-        tokio::spawn( async move {
+        tokio::spawn(async move {
             let mut stream = match tls.accept(tcp).await {
                 Ok(stream) => stream,
                 Err(err) => {
@@ -50,13 +53,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     return;
                 }
             };
-            let mut buff = BytesMut::with_capacity(2048);
+            let mut buff = [0; 4096];
             match stream.read(&mut buff).await {
-                Ok(size) => {                    
-                    let req = Request::new(buff);
-                    println!("Data: {} {} {:?}", req.method(), req.uri(), req.version());
-                    println!("Body: {:?}", req.body());
-
+                Ok(size) => {
+                    let mut headers = [httparse::EMPTY_HEADER; 64];
+                    let mut req = Request::new(&mut headers);
+                    if let Err(err) = req.parse(&buff[..size]) {
+                        println!("Failed HTTP request! {}", err);
+                        return;
+                    }
+                    println!("{:?} {:?} {:?}", req.method, req.path, req.version);
+                    println!("{:?}", &headers[..]);
                 }
                 Err(err) => {
                     println!("Error: {}", err);
@@ -64,7 +71,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         });
     }
-
-
-    Ok(())
 }

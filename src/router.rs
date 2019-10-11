@@ -1,7 +1,5 @@
-use failure::Error;
 use path_tree::PathTree;
 use std::net::SocketAddr;
-use std::path::Path;
 
 fn make_path(path: String) -> String {
     let mut path = path.replace("//", "/");

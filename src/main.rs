@@ -1,74 +1,69 @@
-use bytes::BytesMut;
-use httparse::{parse_headers, Request, Response, Status as HttpStatus};
+use futures_util::stream::StreamExt;
+use hyper::server::{conn::Http as HyperHttp, Builder};
+use hyper::service::{make_service_fn, service_fn};
+use hyper::{Client, Error};
 use native_tls;
 use native_tls::Identity;
-use pretty_hex::*;
-use std::fs::File;
-use std::io::{self, BufReader};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use structopt::StructOpt;
-//use futures::StreamExt;
-use futures_util::StreamExt;
-// use tokio::prelude::*;
-// use tokio_io::BufMut;
-use tokio_io::{AsyncReadExt, AsyncWriteExt, BufMut};
-use tokio_net::tcp::TcpListener;
+use tokio::net::tcp::TcpListener;
 use tokio_tls::TlsAcceptor;
 
-#[macro_use]
-extern crate lazy_static;
 
-mod router;
-mod util;
+// mod router;
+// mod util;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() {
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 8443);
     let der = include_bytes!("../identity.p12");
-    let cert = Identity::from_pkcs12(der, "mypass")?;
-    let tls = tokio_tls::TlsAcceptor::from(native_tls::TlsAcceptor::builder(cert).build()?);
+    let cert = Identity::from_pkcs12(der, "mypass").unwrap();
+    let tls = TlsAcceptor::from(native_tls::TlsAcceptor::builder(cert).build().unwrap());
+    let tls = Arc::new(tls);
 
     let mut listener = match TcpListener::bind(&addr).await {
-        Err(err) => panic!("Could not bind socket! {}", err),
+        Err(err) => {
+            println!("Could not bind socket! {}", err);
+            return;
+        }
         Ok(listener) => listener,
     };
+    let incoming = listener.incoming();
 
-    loop {
-        let tls = tls.clone();
-        println!("loop");
-        let tcp = match listener.accept().await {
-            Ok((tcp, peer_addr)) => tcp,
-            Err(err) => {
-                println!("Failed TCP handeshake! {}", err);
-                continue;
-            }
-        };
-        tokio::spawn(async move {
-            let mut stream = match tls.accept(tcp).await {
-                Ok(stream) => stream,
-                Err(err) => {
-                    println!("Failed TLS handshake! {}", err);
-                    return;
-                }
-            };
-            let mut buff = [0; 4096];
-            match stream.read(&mut buff).await {
-                Ok(size) => {
-                    let mut headers = [httparse::EMPTY_HEADER; 64];
-                    let mut req = Request::new(&mut headers);
-                    if let Err(err) = req.parse(&buff[..size]) {
-                        println!("Failed HTTP request! {}", err);
-                        return;
+    let service = make_service_fn(move |_| {
+        async move {
+            Ok::<_, Error>(service_fn(move |mut req| {
+                let client = Client::new();
+                client.request(req)
+                // let uri_string = format!("http://{}/{}",
+                //                          out_addr_clone,
+                //                          req.uri().path_and_query().map(|x| x.as_str()).unwrap_or(""));
+                // let uri = uri_string.parse().unwrap();
+                // *req.uri_mut() = uri;
+                // client.request(req)
+            }))
+        }
+    });
+
+    let server = Builder::new(
+        hyper::server::accept::from_stream(incoming.filter_map(|socket| {
+            async {
+                match socket {
+                    Ok(stream) => match tls.clone().accept(stream).await {
+                        Ok(val) => Some(Ok::<_, hyper::Error>(val)),
+                        Err(err) => {
+                            println!("Tls handshake error! {}", err);
+                            None
+                        }
+                    },
+                    Err(err) => {
+                        println!("Tcp handshake error! {}", err);
+                        None
                     }
-                    println!("{:?} {:?} {:?}", req.method, req.path, req.version);
-                    println!("{:?}", &headers[..]);
-                }
-                Err(err) => {
-                    println!("Error: {}", err);
                 }
             }
-        });
-    }
+        })),
+        HyperHttp::new(),
+    )
+    .serve(service);
 }

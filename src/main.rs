@@ -1,6 +1,4 @@
 use futures_util::stream::StreamExt;
-use futures_util::future::FutureExt;
-use futures::Future;
 use hyper::{Request, Response, Body, StatusCode};
 use hyper::server::{conn::Http as HyperHttp, Builder};
 use hyper::service::{make_service_fn, service_fn};
@@ -13,28 +11,38 @@ use tokio_tls::{TlsAcceptor, TlsStream};
 #[macro_use]
 extern crate lazy_static;
 
+mod config;
 mod proxy;
 mod router;
+use router::Router;
 
-async fn process(req: Request<Body>, peer_ip: IpAddr) -> hyper::Result<Response<Body>> {
-    if false {
-        let req = proxy::prepare(req, peer_ip, "127.0.0.1");        
-        proxy::call(req).await
-    } else {
-        Ok(Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(Body::from("No route!"))
-            .unwrap())        
-    }
+async fn process(req: Request<Body>, peer_ip: IpAddr, router: Router) -> hyper::Result<Response<Body>> {
+    match router.eval(req.uri().path()) {
+        Some(path) => {
+            let req = proxy::prepare(req, peer_ip, &path);        
+            proxy::call(req).await
+        }
+        None => {
+            Ok(Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::from("No route!"))
+                .unwrap())        
+        }
+    }    
 }
 
 #[tokio::main]
 async fn main() {
+
+    config::write_default("heimdall.toml").unwrap();
+
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 8443);
     let der = include_bytes!("../identity.p12");
     let cert = Identity::from_pkcs12(der, "mypass").unwrap();
     let tls = TlsAcceptor::from(native_tls::TlsAcceptor::builder(cert).build().unwrap());
     let tls = Arc::new(tls);
+    
+    let router = Router::new();
 
     let listener = match TcpListener::bind(&addr).await {
         Err(err) => {
@@ -46,10 +54,11 @@ async fn main() {
     let incoming = listener.incoming();
 
     let service = make_service_fn(move |stream: &TlsStream<TcpStream>| {
+        let router = router.clone();
         let peer = stream.get_ref().peer_addr().unwrap().ip();        
-        async move {
-            Ok::<_, hyper::Error>(service_fn(move |req| {
-                process(req, peer)                
+        async move {        
+            Ok::<_, hyper::Error>(service_fn(move |req| {                
+                process(req, peer, router.clone())                
             }))                
         }
     });

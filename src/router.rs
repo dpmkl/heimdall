@@ -1,3 +1,4 @@
+use crate::config::{Config,RouteDefinition};
 use path_tree::PathTree;
 use std::net::SocketAddr;
 
@@ -12,11 +13,13 @@ fn make_path(path: String) -> String {
     path
 }
 
+#[derive(Clone)]
 pub struct Target {
     addr: SocketAddr,
     path: Option<String>,
 }
 
+#[derive(Clone)]
 pub struct Router {
     routes: PathTree<Target>,
 }
@@ -25,6 +28,22 @@ impl Router {
     pub fn new() -> Self {
         Self {
             routes: PathTree::new(),
+        }
+    }
+
+    pub fn from_config(config: Config) -> Self {
+        let mut routes = PathTree::new();
+        for route in config.routes {
+            routes.insert(
+                &make_path(route.source),
+                Target {
+                    addr: route.target,
+                    path: route.target_path,
+                },
+            );
+        }
+        Self {
+            routes: routes,
         }
     }
 

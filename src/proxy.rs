@@ -1,17 +1,10 @@
 use core::future::Future;
-use futures::Poll;
 use hyper::header::{HeaderMap, HeaderValue};
 use hyper::Client;
 use hyper::{Body, Request, Response, StatusCode, Uri};
 use std::net::IpAddr;
 use std::str::FromStr;
 use unicase::Ascii;
-
-pub async fn error() -> Response<Body> {
-    let mut not_found = Response::default();
-    *not_found.status_mut() = StatusCode::NOT_FOUND;
-    not_found
-}
 
 pub fn call(request: Request<hyper::Body>) -> hyper::client::ResponseFuture {
     Client::new().request(request)

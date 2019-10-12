@@ -12,6 +12,8 @@ hyper = { version = "=0.13.0-alpha.4", features = ["unstable-stream"] }
 lazy_static = "1.4"
 path-tree = "0.1"
 native-tls = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.5"
 tokio = { version = "=0.2.0-alpha.6", features = ["tcp"] }
 tokio-executor = { version = "=0.2.0-alpha.6" }
 tokio-io = { version = "=0.2.0-alpha.6", features=["util"] }

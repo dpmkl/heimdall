@@ -26,7 +26,7 @@ async fn process(req: Request<Body>, peer_ip: IpAddr, router: Router) -> hyper::
         None => {
             Ok(Response::builder()
                 .status(StatusCode::NOT_FOUND)
-                .body(Body::from("No route!"))
+                .body(Body::from("Nothing to see here ..."))
                 .unwrap())        
         }
     }    

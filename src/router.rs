@@ -3,10 +3,10 @@ use std::net::SocketAddr;
 
 fn make_path(path: String) -> String {
     let mut path = path.replace("//", "/");
-    if !path.starts_with("/") {
+    if !path.starts_with('/') {
         path = format!("/{}", path);
     }
-    if path.ends_with("/") {
+    if path.ends_with('/') {
         path.remove(path.len() - 1);
     }
     path
@@ -37,13 +37,11 @@ impl Router {
             if let Some(path) = &node.0.path {
                 route += &path;
             }
-            if node.1.len() > 0 {
+            if !node.1.is_empty() {
                 for (_, v) in node.1 {
                     route += &format!("/{}", v);
                 }
-            }
-
-            println!("Route: {}", route);
+            }            
             Some(route)
         } else {
             None
@@ -54,7 +52,7 @@ impl Router {
         self.routes.insert(
             &make_path(source.to_owned()),
             Target {
-                addr: addr,
+                addr,
                 path: None,
             },
         );

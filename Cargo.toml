@@ -6,12 +6,14 @@ edition = "2018"
 
 [dependencies]
 failure = "0.1"
-futures-preview = { version = "=0.3.0-alpha.18", features = ["nightly","async-await","compat", "io-compat", "std"] }
-futures-util-preview = { version = "=0.3.0-alpha.18" }
-hyper = { version = "=0.13.0-alpha.2", features = ["unstable-stream"] }
+futures-preview = { version = "=0.3.0-alpha.19", features = ["async-await","compat", "io-compat", "std"] }
+futures-util-preview = { version = "=0.3.0-alpha.19" }
+hyper = { version = "=0.13.0-alpha.4", features = ["unstable-stream"] }
+lazy_static = "1.4"
 path-tree = "0.1"
 native-tls = "0.2"
-tokio = { version = "=0.2.0-alpha.5", features = ["tcp"] }
-tokio-executor = { version = "=0.2.0-alpha.5" }
-tokio-io = { version = "=0.2.0-alpha.5", features=["util"] }
-tokio-tls = { version = "=0.3.0-alpha.5" }
+tokio = { version = "=0.2.0-alpha.6", features = ["tcp"] }
+tokio-executor = { version = "=0.2.0-alpha.6" }
+tokio-io = { version = "=0.2.0-alpha.6", features=["util"] }
+tokio-tls = { version = "=0.3.0-alpha.6" }
+unicase = "2.5"

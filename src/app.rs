@@ -12,7 +12,7 @@ pub fn run() -> Option<Config> {
             .about("Create a default config file")
             .version(env!("CARGO_PKG_VERSION"))
             .arg(Arg::with_name("FILE_NAME")
-                .help("Name of the default config file")
+                .help("Name of the default config file to write")
                 .required(true)
                 .index(1)))
         .subcommand(SubCommand::with_name("run")

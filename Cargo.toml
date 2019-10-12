@@ -5,6 +5,7 @@ authors = ["Michael Craggs <m.e.craggs@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+clap = "2.33"
 failure = "0.1"
 futures-preview = { version = "=0.3.0-alpha.19", features = ["async-await","compat", "io-compat", "std"] }
 futures-util-preview = { version = "=0.3.0-alpha.19" }

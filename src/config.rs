@@ -4,6 +4,8 @@ use std::net::SocketAddr;
 use toml;
 use std::io;
 
+pub const DEFAULT_CONFIG: &'static str = "heimdall.default.toml";
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RouteDefinition {
     pub source: String, 
@@ -26,6 +28,11 @@ impl Default for Config {
         routes.push(RouteDefinition {
             source: "/".to_string(),
             target: "127.0.0.1:8000".parse().unwrap(),
+            target_path: None,
+        });
+        routes.push(RouteDefinition {
+            source: "/stuff".to_string(),
+            target: "127.0.0.1:7000".parse().unwrap(),
             target_path: None,
         });
         Self{

@@ -1,7 +1,6 @@
-use core::future::Future;
 use hyper::header::{HeaderMap, HeaderValue};
 use hyper::Client;
-use hyper::{Body, Request, Response, StatusCode, Uri};
+use hyper::{Request, Response, StatusCode, Uri};
 use std::net::IpAddr;
 use std::str::FromStr;
 use unicase::Ascii;

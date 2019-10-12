@@ -11,6 +11,7 @@ use tokio_tls::{TlsAcceptor, TlsStream};
 #[macro_use]
 extern crate lazy_static;
 
+mod app;
 mod config;
 mod proxy;
 mod router;
@@ -33,10 +34,11 @@ async fn process(req: Request<Body>, peer_ip: IpAddr, router: Router) -> hyper::
 
 #[tokio::main]
 async fn main() {
-
-    config::write_default("heimdall.toml").unwrap();
-
-    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 8443);
+    let config = match app::run() {
+        None => return, 
+        Some(config) => config,
+    };    
+    let addr = config.listen.clone();
     let der = include_bytes!("../identity.p12");
     let cert = Identity::from_pkcs12(der, "mypass").unwrap();
     let tls = TlsAcceptor::from(native_tls::TlsAcceptor::builder(cert).build().unwrap());

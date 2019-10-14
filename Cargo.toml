@@ -3,7 +3,9 @@ name = "heimdall"
 version = "0.1.1"
 authors = ["Michael Craggs <m.e.craggs@gmail.com>"]
 edition = "2018"
-description = "Https to Http async/await reverse proxy based on hyper"
+description = "Https to Http reverse proxy based on hyper"
+tags = ["http", "https", "reverse proxy", "async/await", "hyper", "tokio"]
+license = "MIT"
     
 
 [dependencies]

@@ -32,15 +32,27 @@ async fn process(req: Request<Body>, peer_ip: IpAddr, router: Router) -> hyper::
     }    
 }
 
+fn load_cert(file: &str, pass: Option<String>) -> Identity {
+    use std::fs::File;
+    use std::io::{Read};
+    let pass = match pass {
+        Some(pass) => pass,
+        None => "".to_owned(),
+    }; 
+    let mut file = std::fs::File::open(file).unwrap();
+    let mut identity = vec![];
+    file.read_to_end(&mut identity).unwrap();
+    Identity::from_pkcs12(&identity, &pass).unwrap()
+}
+
 #[tokio::main]
 async fn main() {
     let config = match app::run() {
         None => return, 
         Some(config) => config,
     };    
-    let addr = config.listen.clone();
-    let der = include_bytes!("../identity.p12");
-    let cert = Identity::from_pkcs12(der, "mypass").unwrap();
+    let addr = config.listen.clone();    
+    let cert = load_cert(&config.cert_file, config.cert_pass);
     let tls = TlsAcceptor::from(native_tls::TlsAcceptor::builder(cert).build().unwrap());
     let tls = Arc::new(tls);
     

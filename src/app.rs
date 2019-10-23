@@ -7,23 +7,31 @@ pub fn run() -> Option<Config> {
         .setting(AppSettings::ArgRequiredElseHelp)
         .version(env!("CARGO_PKG_VERSION"))
         .author(env!("CARGO_PKG_AUTHORS"))
-        .about(env!("CARGO_PKG_DESCRIPTION"))                          
-        .subcommand(SubCommand::with_name("default")
-            .about("Create a default config file")
-            .version(env!("CARGO_PKG_VERSION"))
-            .arg(Arg::with_name("FILE_NAME")
-                .help("Name of the default config file to write")
-                .required(true)
-                .index(1)))
-        .subcommand(SubCommand::with_name("run")
-            .about("Run from a given config file")
-            .version(env!("CARGO_PKG_VERSION"))
-            .arg(Arg::with_name("FILE_NAME")
-                .help("Name of the config file to run from")
-                .required(true)
-                .index(1)))
+        .about(env!("CARGO_PKG_DESCRIPTION"))
+        .subcommand(
+            SubCommand::with_name("default")
+                .about("Create a default config file")
+                .version(env!("CARGO_PKG_VERSION"))
+                .arg(
+                    Arg::with_name("FILE_NAME")
+                        .help("Name of the default config file to write")
+                        .required(true)
+                        .index(1),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("run")
+                .about("Run from a given config file")
+                .version(env!("CARGO_PKG_VERSION"))
+                .arg(
+                    Arg::with_name("FILE_NAME")
+                        .help("Name of the config file to run from")
+                        .required(true)
+                        .index(1),
+                ),
+        )
         .get_matches();
-    
+
     if let Some(matches) = matches.subcommand_matches("default") {
         let file = matches.value_of("FILE_NAME").unwrap();
         if let Err(err) = config::write_default(&file) {

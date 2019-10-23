@@ -1,4 +1,4 @@
-use crate::config::{Config,RouteDefinition};
+use crate::config::Config;
 use path_tree::PathTree;
 use std::net::SocketAddr;
 
@@ -42,15 +42,12 @@ impl Router {
                 },
             );
         }
-        Self {
-            routes: routes,
-        }
+        Self { routes }
     }
 
     pub fn eval(&self, path: &str) -> Option<String> {
         if let Some(node) = self.routes.find(path) {
             let mut route = String::new();
-            println!("Params: {:?}", node.1);
             let target = node.0;
             route = format!("http://{}:{}", node.0.addr.ip(), target.addr.port());
             if let Some(path) = &node.0.path {
@@ -60,7 +57,7 @@ impl Router {
                 for (_, v) in node.1 {
                     route += &format!("/{}", v);
                 }
-            }            
+            }
             Some(route)
         } else {
             None
@@ -68,13 +65,8 @@ impl Router {
     }
 
     pub fn add_route(&mut self, source: &str, addr: SocketAddr) {
-        self.routes.insert(
-            &make_path(source.to_owned()),
-            Target {
-                addr,
-                path: None,
-            },
-        );
+        self.routes
+            .insert(&make_path(source.to_owned()), Target { addr, path: None });
     }
 }
 

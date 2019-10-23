@@ -1,12 +1,16 @@
+#![feature(rustc_private)]
 use futures_util::stream::StreamExt;
-use hyper::{Request, Response, Body, StatusCode};
 use hyper::server::{conn::Http as HyperHttp, Builder};
 use hyper::service::{make_service_fn, service_fn};
+use hyper::{Body, Request, Response, StatusCode};
 use native_tls::Identity;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::IpAddr;
 use std::sync::Arc;
 use tokio::net::tcp::{TcpListener, TcpStream};
 use tokio_tls::{TlsAcceptor, TlsStream};
+
+#[macro_use]
+extern crate log;
 
 #[macro_use]
 extern crate lazy_static;
@@ -17,28 +21,25 @@ mod proxy;
 mod router;
 use router::Router;
 
-async fn process(req: Request<Body>, peer_ip: IpAddr, router: Router) -> hyper::Result<Response<Body>> {
+async fn process(
+    req: Request<Body>,
+    peer_ip: IpAddr,
+    router: Router,
+) -> hyper::Result<Response<Body>> {
     match router.eval(req.uri().path()) {
         Some(path) => {
-            let req = proxy::prepare(req, peer_ip, &path);        
+            let req = proxy::prepare(req, peer_ip, &path);
             proxy::call(req).await
         }
-        None => {
-            Ok(Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Body::from("Nothing to see here ..."))
-                .unwrap())        
-        }
-    }    
+        None => Ok(Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Body::from("Nothing to see here ..."))
+            .unwrap()),
+    }
 }
 
-fn load_cert(file: &str, pass: Option<String>) -> Identity {
-    use std::fs::File;
-    use std::io::{Read};
-    let pass = match pass {
-        Some(pass) => pass,
-        None => "".to_owned(),
-    }; 
+fn load_cert(file: &str, pass: &str) -> Identity {
+    use std::io::Read;
     let mut file = std::fs::File::open(file).unwrap();
     let mut identity = vec![];
     file.read_to_end(&mut identity).unwrap();
@@ -47,20 +48,26 @@ fn load_cert(file: &str, pass: Option<String>) -> Identity {
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
     let config = match app::run() {
-        None => return, 
+        None => return,
         Some(config) => config,
-    };    
-    let addr = config.listen.clone();    
-    let cert = load_cert(&config.cert_file, config.cert_pass);
+    };
+    let addr = config.listen;
+    let pass = match &config.cert_pass {
+        Some(pass) => &pass,
+        None => "",
+    };
+    let cert = load_cert(&config.cert_file, pass);
     let tls = TlsAcceptor::from(native_tls::TlsAcceptor::builder(cert).build().unwrap());
     let tls = Arc::new(tls);
-    
-    let router = Router::new();
+
+    let router = Router::from_config(config);
 
     let listener = match TcpListener::bind(&addr).await {
         Err(err) => {
-            println!("Could not bind socket! {}", err);
+            error!("Could not bind socket! {}", err);
             return;
         }
         Ok(listener) => listener,
@@ -69,12 +76,8 @@ async fn main() {
 
     let service = make_service_fn(move |stream: &TlsStream<TcpStream>| {
         let router = router.clone();
-        let peer = stream.get_ref().peer_addr().unwrap().ip();        
-        async move {        
-            Ok::<_, hyper::Error>(service_fn(move |req| {                
-                process(req, peer, router.clone())                
-            }))                
-        }
+        let peer = stream.get_ref().peer_addr().unwrap().ip();
+        async move { Ok::<_, hyper::Error>(service_fn(move |req| process(req, peer, router.clone()))) }
     });
 
     let server = Builder::new(
@@ -84,12 +87,12 @@ async fn main() {
                     Ok(stream) => match tls.clone().accept(stream).await {
                         Ok(val) => Some(Ok::<_, hyper::Error>(val)),
                         Err(err) => {
-                            println!("Tls handshake error! {}", err);
+                            error!("Tls handshake error! {}", err);
                             None
                         }
                     },
                     Err(err) => {
-                        println!("Tcp handshake error! {}", err);
+                        error!("Tcp handshake error! {}", err);
                         None
                     }
                 }
@@ -100,6 +103,6 @@ async fn main() {
     .serve(service);
 
     if let Err(err) = server.await {
-        println!("Error running proxy! {}", err);
+        error!("Error during main execution! {}", err);
     }
 }

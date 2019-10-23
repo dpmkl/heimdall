@@ -1,6 +1,6 @@
 use hyper::header::{HeaderMap, HeaderValue};
 use hyper::Client;
-use hyper::{Request, Response, StatusCode, Uri};
+use hyper::{Request, Uri};
 use std::net::IpAddr;
 use std::str::FromStr;
 use unicase::Ascii;
@@ -43,8 +43,8 @@ pub fn prepare(
 
 fn forward_uri<B>(forward_url: &str, req: &Request<B>) -> Uri {
     let forward_uri = match req.uri().query() {
-        Some(query) => format!("http://{}{}?{}", forward_url, req.uri().path(), query),
-        None => format!("http://{}{}", forward_url, req.uri().path()),
+        Some(query) => format!("{}{}?{}", forward_url, req.uri().path(), query),
+        None => format!("{}{}", forward_url, req.uri().path()),
     };
 
     Uri::from_str(forward_uri.as_str()).unwrap()

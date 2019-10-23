@@ -1,23 +1,20 @@
 use failure::Fail;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use std::io;
 use std::net::SocketAddr;
 use toml;
-use std::io;
-
-pub const DEFAULT_CONFIG: &'static str = "heimdall.default.toml";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RouteDefinition {
-    pub source: String, 
+    pub source: String,
     pub target: SocketAddr,
     pub target_path: Option<String>,
-
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
     pub listen: SocketAddr,
-    pub cert_file: String, 
+    pub cert_file: String,
     pub cert_pass: Option<String>,
     pub routes: Vec<RouteDefinition>,
 }
@@ -35,11 +32,11 @@ impl Default for Config {
             target: "127.0.0.1:7000".parse().unwrap(),
             target_path: None,
         });
-        Self{
+        Self {
             listen: "0.0.0.0:8443".parse().unwrap(),
             cert_file: "identity.p12".to_owned(),
             cert_pass: Some("mypass".to_owned()),
-            routes: routes, 
+            routes,
         }
     }
 }
@@ -55,7 +52,6 @@ pub fn write_default(file: &str) -> Result<(), ConfigError> {
     std::fs::write(file, data)?;
     Ok(())
 }
-
 
 #[derive(Debug, Fail)]
 pub enum ConfigError {

@@ -10,6 +10,7 @@ license = "MIT"
 
 [dependencies]
 clap = "2.33"
+env_logger = "0.7"
 failure = "0.1"
 futures-preview = { version = "=0.3.0-alpha.19", features = ["async-await","compat", "io-compat", "std"] }
 futures-util-preview = { version = "=0.3.0-alpha.19" }

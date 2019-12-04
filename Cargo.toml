@@ -1,6 +1,6 @@
 [package]
 name = "heimdall"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Michael Craggs <m.e.craggs@gmail.com>"]
 edition = "2018"
 description = "Https to Http reverse proxy based on hyper"

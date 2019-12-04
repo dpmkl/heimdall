@@ -1,0 +1,16 @@
+listen = '0.0.0.0:8443'
+cert_file = 'identity.p12'
+cert_pass = 'mypass'
+
+[[routes]]
+source = '/'
+target = '127.0.0.1:8000'
+allowed_methods = []
+
+[[routes]]
+source = '/stuff'
+target = '127.0.0.1:7000'
+allowed_methods = [
+    'GET',
+    'POST',
+]

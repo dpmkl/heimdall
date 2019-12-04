@@ -9,6 +9,7 @@ pub struct RouteDefinition {
     pub source: String,
     pub target: SocketAddr,
     pub target_path: Option<String>,
+    pub allowed_methods: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -21,16 +22,19 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
+        let methods: Vec<String> = vec!["GET".to_owned(), "POST".to_owned()];
         let mut routes: Vec<RouteDefinition> = Vec::new();
         routes.push(RouteDefinition {
             source: "/".to_string(),
             target: "127.0.0.1:8000".parse().unwrap(),
             target_path: None,
+            allowed_methods: vec![],
         });
         routes.push(RouteDefinition {
             source: "/stuff".to_string(),
             target: "127.0.0.1:7000".parse().unwrap(),
             target_path: None,
+            allowed_methods: methods,
         });
         Self {
             listen: "0.0.0.0:8443".parse().unwrap(),

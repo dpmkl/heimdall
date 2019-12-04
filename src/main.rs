@@ -11,25 +11,30 @@ use tokio_tls::{TlsAcceptor, TlsStream};
 
 use log::error;
 
+mod acl;
 mod app;
 mod config;
 mod proxy;
 mod router;
-use router::Router;
+use router::{Router, RouterResult};
 
 async fn process(
     req: Request<Body>,
     peer_ip: IpAddr,
     router: Router,
 ) -> hyper::Result<Response<Body>> {
-    match router.eval(req.uri().path()) {
-        Some(path) => {
-            let req = proxy::prepare(req, peer_ip, &path);
+    match router.eval(&req) {
+        RouterResult::Success(path) => {
+            let req = proxy::prepare(req, peer_ip, &path).await;
             proxy::call(req).await
         }
-        None => Ok(Response::builder()
+        RouterResult::NotDefined => Ok(Response::builder()
             .status(StatusCode::NOT_FOUND)
-            .body(Body::from("Nothing to see here ..."))
+            .body(Body::from("No route defined!"))
+            .unwrap()),
+        RouterResult::NotAllowedMethod => Ok(Response::builder()
+            .status(StatusCode::FORBIDDEN)
+            .body(Body::from("Invalid http method!"))
             .unwrap()),
     }
 }

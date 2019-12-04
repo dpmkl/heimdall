@@ -1,5 +1,7 @@
 # heimdall - a https reverse proxy #
-Heimdall is a https reverse proxy to act as a single gateway for multiple http sites, requiring only a single https setup. It utlizies hyper for http/2 handling and is heavily based on async/await. 
+This project is WIP, lots of stuff to do for production use, and depending on hyper to move to futures 0.2 ( 1.0 in the long run ).
+
+Heimdall is a https reverse proxy to act as a single gateway for multiple http sites, requiring only a single https setup. It utlizies hyper for http/2 handling  based on async/await. 
 
 It strips the hop-by-hop headers, adds or extends the 'x-forwarded-for' header with the client ip and returns an unmodified http response from the backend. 
 
@@ -19,5 +21,3 @@ Run heimdall from a config file <CONFIG_FILE>
 heimdall run <CONFIG_FILE>
 ```
 
-## Notes ##
-Due to async/await being activley developed on the nighly channel it is not recommend to use in production yet. 

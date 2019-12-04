@@ -10,7 +10,7 @@ pub fn call(request: Request<hyper::Body>) -> hyper::client::ResponseFuture {
     Client::new().request(request)
 }
 
-pub fn prepare(
+pub async fn prepare(
     mut request: Request<hyper::Body>,
     source: IpAddr,
     target: &str,

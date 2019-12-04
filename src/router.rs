@@ -1,4 +1,6 @@
+use crate::acl::{parse_allowed_methods, AllowedMethods};
 use crate::config::Config;
+use hyper::{Body, Request};
 use path_tree::PathTree;
 use std::net::SocketAddr;
 
@@ -17,6 +19,7 @@ fn make_path(path: String) -> String {
 pub struct Target {
     addr: SocketAddr,
     path: Option<String>,
+    allowed_methods: AllowedMethods,
 }
 
 #[derive(Clone)]
@@ -24,13 +27,14 @@ pub struct Router {
     routes: PathTree<Target>,
 }
 
-impl Router {
-    pub fn new() -> Self {
-        Self {
-            routes: PathTree::new(),
-        }
-    }
+#[derive(Debug)]
+pub enum RouterResult {
+    Success(String),
+    NotDefined,
+    NotAllowedMethod,
+}
 
+impl Router {
     pub fn from_config(config: Config) -> Self {
         let mut routes = PathTree::new();
         for route in config.routes {
@@ -39,34 +43,56 @@ impl Router {
                 Target {
                     addr: route.target,
                     path: route.target_path,
+                    allowed_methods: parse_allowed_methods(route.allowed_methods),
                 },
             );
         }
         Self { routes }
     }
 
-    pub fn eval(&self, path: &str) -> Option<String> {
-        if let Some(node) = self.routes.find(path) {
-            let mut route = String::new();
-            let target = node.0;
-            route = format!("http://{}:{}", node.0.addr.ip(), target.addr.port());
-            if let Some(path) = &node.0.path {
-                route += &path;
-            }
-            if !node.1.is_empty() {
-                for (_, v) in node.1 {
-                    route += &format!("/{}", v);
+    pub fn eval(&self, req: &Request<Body>) -> RouterResult {
+        if let Some(node) = self.routes.find(req.uri().path()) {
+            if node.0.allowed_methods == AllowedMethods::Any
+                || node.0.allowed_methods.contains(req.method())
+            {
+                let target = node.0;
+                let route = if let Some(path) = &node.0.path {
+                    format!("http://{}:{}{}", node.0.addr.ip(), target.addr.port(), path)
+                } else {
+                    format!("http://{}:{}", node.0.addr.ip(), target.addr.port())
+                };
+                if node.1.is_empty() {
+                    RouterResult::Success(route)
+                } else {
+                    let ext: Vec<String> =
+                        node.1.into_iter().map(|(_, v)| format!("/{}", v)).collect();
+                    RouterResult::Success(format!("{}/{}", route, ext.join("/")))
                 }
+            } else {
+                RouterResult::NotAllowedMethod
             }
-            Some(route)
         } else {
-            None
+            RouterResult::NotDefined
         }
     }
 
+    #[allow(dead_code)]
+    pub fn new() -> Self {
+        Self {
+            routes: PathTree::new(),
+        }
+    }
+
+    #[allow(dead_code)]
     pub fn add_route(&mut self, source: &str, addr: SocketAddr) {
-        self.routes
-            .insert(&make_path(source.to_owned()), Target { addr, path: None });
+        self.routes.insert(
+            &make_path(source.to_owned()),
+            Target {
+                addr,
+                path: None,
+                allowed_methods: AllowedMethods::Any,
+            },
+        );
     }
 }
 

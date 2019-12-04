@@ -1,6 +1,7 @@
 use hyper::header::{HeaderMap, HeaderValue};
 use hyper::Client;
 use hyper::{Request, Uri};
+use lazy_static::lazy_static;
 use std::net::IpAddr;
 use std::str::FromStr;
 use unicase::Ascii;

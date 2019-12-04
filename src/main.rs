@@ -9,11 +9,7 @@ use std::sync::Arc;
 use tokio::net::tcp::{TcpListener, TcpStream};
 use tokio_tls::{TlsAcceptor, TlsStream};
 
-#[macro_use]
-extern crate log;
-
-#[macro_use]
-extern crate lazy_static;
+use log::error;
 
 mod app;
 mod config;

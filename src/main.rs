@@ -1,4 +1,3 @@
-#![feature(rustc_private)]
 use futures_util::stream::StreamExt;
 use hyper::server::{conn::Http as HyperHttp, Builder};
 use hyper::service::{make_service_fn, service_fn};
@@ -6,7 +5,7 @@ use hyper::{Body, Request, Response, StatusCode};
 use native_tls::Identity;
 use std::net::IpAddr;
 use std::sync::Arc;
-use tokio::net::tcp::{TcpListener, TcpStream};
+use tokio::net::{TcpListener, TcpStream};
 use tokio_tls::{TlsAcceptor, TlsStream};
 
 use log::error;
@@ -66,7 +65,7 @@ async fn main() {
 
     let router = Router::from_config(config);
 
-    let listener = match TcpListener::bind(&addr).await {
+    let mut listener = match TcpListener::bind(&addr).await {
         Err(err) => {
             error!("Could not bind socket! {}", err);
             return;
@@ -82,20 +81,18 @@ async fn main() {
     });
 
     let server = Builder::new(
-        hyper::server::accept::from_stream(incoming.filter_map(|socket| {
-            async {
-                match socket {
-                    Ok(stream) => match tls.clone().accept(stream).await {
-                        Ok(val) => Some(Ok::<_, hyper::Error>(val)),
-                        Err(err) => {
-                            error!("Tls handshake error! {}", err);
-                            None
-                        }
-                    },
+        hyper::server::accept::from_stream(incoming.filter_map(|socket| async {
+            match socket {
+                Ok(stream) => match tls.clone().accept(stream).await {
+                    Ok(val) => Some(Ok::<_, hyper::Error>(val)),
                     Err(err) => {
-                        error!("Tcp handshake error! {}", err);
+                        error!("Tls handshake error! {}", err);
                         None
                     }
+                },
+                Err(err) => {
+                    error!("Tcp handshake error! {}", err);
+                    None
                 }
             }
         })),

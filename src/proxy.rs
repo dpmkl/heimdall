@@ -23,22 +23,10 @@ pub async fn prepare(
 
     // Add forwarding information
     let fwd_header = "x-forwarded-for";
-    match request.headers_mut().entry(fwd_header) {
-        Ok(header_entry) => match header_entry {
-            hyper::header::Entry::Vacant(entry) => {
-                entry.insert(format!("{}", source).parse().unwrap());
-            }
-            hyper::header::Entry::Occupied(mut entry) => {
-                entry.insert(
-                    format!("{}, {}", entry.get().to_str().unwrap(), source)
-                        .parse()
-                        .unwrap(),
-                );
-            }
-        },
-        Err(err) => panic!("Invalid header name! {}", err),
-    }
-
+    request
+        .headers_mut()
+        .entry(fwd_header)
+        .or_insert_with(|| format!("{}", source).parse().unwrap());
     request
 }
 

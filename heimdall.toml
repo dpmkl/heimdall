@@ -1,6 +1,7 @@
 listen = '0.0.0.0:8443'
 cert_file = 'identity.p12'
 cert_pass = 'mypass'
+redirect_http = false
 
 [[routes]]
 source = '/'

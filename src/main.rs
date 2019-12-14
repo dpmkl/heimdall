@@ -1,14 +1,13 @@
+use crate::util::{load_cert, rewrite_uri};
 use futures_util::stream::StreamExt;
 use hyper::server::{conn::Http as HyperHttp, Builder};
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Request, Response, StatusCode};
-use native_tls::Identity;
+use hyper::{Body, Request, Response, Server, StatusCode};
+use log::error;
 use std::net::IpAddr;
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tls::{TlsAcceptor, TlsStream};
-
-use log::error;
 
 mod acl;
 mod app;
@@ -16,6 +15,7 @@ mod config;
 mod proxy;
 mod router;
 use router::{Router, RouterResult};
+mod util;
 
 async fn process(
     req: Request<Body>,
@@ -38,12 +38,13 @@ async fn process(
     }
 }
 
-fn load_cert(file: &str, pass: &str) -> Identity {
-    use std::io::Read;
-    let mut file = std::fs::File::open(file).unwrap();
-    let mut identity = vec![];
-    file.read_to_end(&mut identity).unwrap();
-    Identity::from_pkcs12(&identity, &pass).unwrap()
+async fn redirect_http(request: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+    let (parts, _) = request.into_parts();
+    Ok(Response::builder()
+        .status(StatusCode::MOVED_PERMANENTLY)
+        .header("Location", rewrite_uri(parts.uri).to_string())
+        .body(Body::from("Redirect to https"))
+        .unwrap())
 }
 
 #[tokio::main]
@@ -63,7 +64,7 @@ async fn main() {
     let tls = TlsAcceptor::from(native_tls::TlsAcceptor::builder(cert).build().unwrap());
     let tls = Arc::new(tls);
 
-    let router = Router::from_config(config);
+    let router = Router::from_config(config.clone());
 
     let mut listener = match TcpListener::bind(&addr).await {
         Err(err) => {
@@ -100,7 +101,19 @@ async fn main() {
     )
     .serve(service);
 
-    if let Err(err) = server.await {
-        error!("Error during main execution! {}", err);
-    }
+    if config.redirect_http {
+        let addr = ([0, 0, 0, 0], 80).into();
+        let redirector = Server::bind(&addr).serve(make_service_fn(|_| async {
+            Ok::<_, hyper::Error>(service_fn(redirect_http))
+        }));
+        let (http, https) = futures::join!(redirector, server);
+        if let Err(err) = http {
+            error!("Error during http server execution! {}", err);
+        }
+        if let Err(err) = https {
+            error!("Error during https server execution! {}", err);
+        }
+    } else if let Err(err) = server.await {
+        error!("Error during https server execution! {}", err);
+    };
 }

@@ -36,8 +36,10 @@ pub fn run() -> Option<Config> {
         let file = matches.value_of("FILE_NAME").unwrap();
         if let Err(err) = config::write_default(&file) {
             println!("Could not write default config! {}", err);
-            return None;
+        } else {
+            println!("Wrote default config file to '{}'", file);
         }
+        std::process::exit(0);
     }
 
     if let Some(matches) = matches.subcommand_matches("run") {

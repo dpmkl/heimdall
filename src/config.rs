@@ -4,7 +4,7 @@ use std::io;
 use std::net::SocketAddr;
 use toml;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct RouteDefinition {
     pub source: String,
     pub target: SocketAddr,
@@ -12,11 +12,12 @@ pub struct RouteDefinition {
     pub allowed_methods: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Config {
     pub listen: SocketAddr,
     pub cert_file: String,
     pub cert_pass: Option<String>,
+    pub redirect_http: bool,
     pub routes: Vec<RouteDefinition>,
 }
 
@@ -40,6 +41,7 @@ impl Default for Config {
             listen: "0.0.0.0:8443".parse().unwrap(),
             cert_file: "identity.p12".to_owned(),
             cert_pass: Some("mypass".to_owned()),
+            redirect_http: false,
             routes,
         }
     }

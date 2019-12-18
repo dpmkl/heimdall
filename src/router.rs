@@ -27,7 +27,7 @@ pub struct Router {
     routes: PathTree<Target>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum RouterResult {
     Success(String),
     NotDefined,
@@ -66,7 +66,8 @@ impl Router {
                 } else {
                     let ext: Vec<String> =
                         node.1.into_iter().map(|(_, v)| format!("/{}", v)).collect();
-                    RouterResult::Success(format!("{}/{}", route, ext.join("/")))
+                    println!("{:?}", ext);
+                    RouterResult::Success(format!("{}{}", route, ext.join("/")))
                 }
             } else {
                 RouterResult::NotAllowedMethod
@@ -76,21 +77,21 @@ impl Router {
         }
     }
 
-    #[allow(dead_code)]
+    #[cfg(test)]
     pub fn new() -> Self {
         Self {
             routes: PathTree::new(),
         }
     }
 
-    #[allow(dead_code)]
-    pub fn add_route(&mut self, source: &str, addr: SocketAddr) {
+    #[cfg(test)]
+    pub fn add_route(&mut self, source: &str, addr: SocketAddr, allowed_methods: AllowedMethods) {
         self.routes.insert(
             &make_path(source.to_owned()),
             Target {
                 addr,
                 path: None,
-                allowed_methods: AllowedMethods::Any,
+                allowed_methods,
             },
         );
     }
@@ -98,39 +99,52 @@ impl Router {
 
 #[cfg(test)]
 mod tests {
-    use super::Router;
-    use std::net::SocketAddr;
-    // #[test]
-    // fn evaluation() {
-    //     let root = "0.0.0.0:8080".parse().unwrap();
-    //     let home = "0.0.0.0:8000".parse().unwrap();
-    //     let site = "127.0.0.1:5000".parse().unwrap();
-    //     let bulk = "127.0.0.1:3000".parse().unwrap();
-    //     let multi = "127.0.0.1:2000".parse().unwrap();
-    //     let mut router = Router::new();
-    //     router.add_route("/", root);
-    //     router.add_route("/home", home);
-    //     router.add_route("/home/*any", home);
-    //     router.add_route("/site/:name", site);
-    //     router.add_route("/bulk/*any", bulk);
-    //     router.add_route("/multi/:name/res/:res", multi);
+    use super::AllowedMethods;
+    use super::{Router, RouterResult};
+    use hyper::{Body, Method, Request};
 
-    //     assert_eq!(router.eval("/"), fmt_addr(root, ""));
-    //     assert_eq!(router.eval("/home"), fmt_addr(home, ""));
-    //     assert_eq!(router.eval("/home/stuff"), fmt_addr(home, "/stuff"));
-    //     assert_eq!(router.eval("/foo"), None);
-    //     assert_eq!(router.eval("/site"), None);
-    //     assert_eq!(router.eval("/site/test"), fmt_addr(site, "/test"));
-    //     assert_eq!(router.eval("/site/test/bar/foo"), None);
-    //     assert_eq!(router.eval("/bulk"), None);
-    //     assert_eq!(router.eval("/bulk/test"), fmt_addr(bulk, "/test"));
-    //     assert_eq!(
-    //         router.eval("/bulk/test/bar/foo"),
-    //         fmt_addr(bulk, "/test/bar/foo")
-    //     );
-    //     assert_eq!(
-    //         router.eval("/multi/calvin/res/css"),
-    //         fmt_addr(multi, "/calvin/css")
-    //     );
-    // }
+    fn build_req(uri: &str, method: hyper::Method) -> Request<Body> {
+        Request::builder()
+            .uri(uri)
+            .method(method)
+            .body(Body::from("asdf"))
+            .unwrap()
+    }
+
+    #[test]
+    fn route_evaluation() {
+        let root = "0.0.0.0:8080".parse().unwrap();
+        let home = "0.0.0.0:8000".parse().unwrap();
+        let site = "127.0.0.1:5000".parse().unwrap();
+        let bulk = "127.0.0.1:3000".parse().unwrap();
+        let multi = "127.0.0.1:2000".parse().unwrap();
+        let mut router = Router::new();
+        router.add_route("/", root, AllowedMethods::Any);
+        router.add_route("/home", home, AllowedMethods::Only(vec![Method::GET]));
+        router.add_route("/home/*any", home, AllowedMethods::Any);
+        router.add_route("/site/:name", site, AllowedMethods::Any);
+        router.add_route("/bulk/*any", bulk, AllowedMethods::Any);
+        router.add_route("/multi/:name/res/:res", multi, AllowedMethods::Any);
+
+        assert_eq!(
+            router.eval(&build_req("/home", Method::GET)),
+            RouterResult::Success("http://0.0.0.0:8000".to_owned())
+        );
+        assert_eq!(
+            router.eval(&build_req("/home/qwerty", Method::GET)),
+            RouterResult::Success("http://0.0.0.0:8000/qwerty".to_owned())
+        );
+        assert_eq!(
+            router.eval(&build_req("/home/asdf/qwerty", Method::GET)),
+            RouterResult::Success("http://0.0.0.0:8000/asdf/qwerty".to_owned())
+        );
+        assert_eq!(
+            router.eval(&build_req("/home", Method::POST)),
+            RouterResult::NotAllowedMethod
+        );
+        assert_eq!(
+            router.eval(&build_req("/notdefined", Method::GET)),
+            RouterResult::NotDefined
+        );
+    }
 }

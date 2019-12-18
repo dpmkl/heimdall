@@ -1,4 +1,4 @@
-use hyper::http::uri::{Authority,Scheme};
+use hyper::http::uri::{Authority, Scheme};
 use hyper::http::Uri;
 use native_tls::Identity;
 
@@ -11,10 +11,14 @@ pub fn load_cert(file: &str, pass: &str) -> Identity {
 }
 
 pub fn rewrite_uri(uri: Uri) -> Uri {
-    let parts = uri.into_parts();    
+    let parts = uri.into_parts();
     Uri::builder()
         .scheme(Scheme::HTTPS)
-        .authority(parts.authority.unwrap_or(Authority::from_static("localhost")))
+        .authority(
+            parts
+                .authority
+                .unwrap_or(Authority::from_static("localhost")),
+        )
         .path_and_query(parts.path_and_query.unwrap())
         .build()
         .unwrap()

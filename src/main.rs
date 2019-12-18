@@ -82,18 +82,20 @@ async fn main() {
     });
 
     let server = Builder::new(
-        hyper::server::accept::from_stream(incoming.filter_map(|socket| async {
-            match socket {
-                Ok(stream) => match tls.clone().accept(stream).await {
-                    Ok(val) => Some(Ok::<_, hyper::Error>(val)),
+        hyper::server::accept::from_stream(incoming.filter_map(|socket| {
+            async {
+                match socket {
+                    Ok(stream) => match tls.clone().accept(stream).await {
+                        Ok(val) => Some(Ok::<_, hyper::Error>(val)),
+                        Err(err) => {
+                            error!("Tls handshake error! {}", err);
+                            None
+                        }
+                    },
                     Err(err) => {
-                        error!("Tls handshake error! {}", err);
+                        error!("Tcp handshake error! {}", err);
                         None
                     }
-                },
-                Err(err) => {
-                    error!("Tcp handshake error! {}", err);
-                    None
                 }
             }
         })),
@@ -103,8 +105,8 @@ async fn main() {
 
     if config.redirect_http {
         let addr = ([0, 0, 0, 0], 80).into();
-        let redirector = Server::bind(&addr).serve(make_service_fn(|_| async {
-            Ok::<_, hyper::Error>(service_fn(redirect_http))
+        let redirector = Server::bind(&addr).serve(make_service_fn(|_| {
+            async { Ok::<_, hyper::Error>(service_fn(redirect_http)) }
         }));
         let (http, https) = futures::join!(redirector, server);
         if let Err(err) = http {

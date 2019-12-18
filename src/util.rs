@@ -17,7 +17,7 @@ pub fn rewrite_uri(uri: Uri) -> Uri {
         .authority(
             parts
                 .authority
-                .unwrap_or(Authority::from_static("localhost")),
+                .unwrap_or_else(|| Authority::from_static("localhost")),
         )
         .path_and_query(parts.path_and_query.unwrap())
         .build()

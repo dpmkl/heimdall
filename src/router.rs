@@ -125,7 +125,11 @@ mod tests {
         router.add_route("/site/:name", site, AllowedMethods::Any);
         router.add_route("/bulk/*any", bulk, AllowedMethods::Any);
         router.add_route("/multi/:name/res/:res", multi, AllowedMethods::Any);
-
+        
+        assert_eq!(
+            router.eval(&build_req("/", Method::GET)),
+            RouterResult::Success("http://0.0.0.0:8080".to_owned())
+        );
         assert_eq!(
             router.eval(&build_req("/home", Method::GET)),
             RouterResult::Success("http://0.0.0.0:8000".to_owned())

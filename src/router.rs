@@ -70,7 +70,6 @@ impl Router {
                     .iter()
                     .map(|p| format!("/{}", p.1))
                     .collect::<String>();
-                println!("params: {:?}", params);
                 let p_and_q = if let Some(p_and_q) = req.uri().path_and_query() {
                     let path = match &target.path {
                         Some(path) => path,
@@ -82,15 +81,8 @@ impl Router {
                         format!("{}{}", path, params)
                     }
                 } else {
-                    println!("No path and query");
                     String::default()
                 };
-                println!(
-                    "{:?} -> {} | {:?}",
-                    req.uri().path_and_query(),
-                    p_and_q,
-                    node.1
-                );
                 let p_and_q: &str = &p_and_q;
                 let uri = uri.path_and_query(p_and_q).build().unwrap();
                 RouterResult::Success(uri)

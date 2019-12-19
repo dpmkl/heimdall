@@ -3,7 +3,6 @@ use hyper::Client;
 use hyper::{Request, Uri};
 use lazy_static::lazy_static;
 use std::net::IpAddr;
-use std::str::FromStr;
 use unicase::Ascii;
 
 pub fn call(request: Request<hyper::Body>) -> hyper::client::ResponseFuture {
@@ -13,13 +12,13 @@ pub fn call(request: Request<hyper::Body>) -> hyper::client::ResponseFuture {
 pub async fn prepare(
     mut request: Request<hyper::Body>,
     source: IpAddr,
-    target: &str,
+    target: Uri,
 ) -> Request<hyper::Body> {
     // Strip Hop-by-Hop headers
     *request.headers_mut() = strip_hbh(request.headers());
 
     // Redirect to forward uri
-    *request.uri_mut() = forward_uri(target, &request);
+    *request.uri_mut() = target;
 
     // Add forwarding information
     let fwd_header = "x-forwarded-for";
@@ -28,15 +27,6 @@ pub async fn prepare(
         .entry(fwd_header)
         .or_insert_with(|| format!("{}", source).parse().unwrap());
     request
-}
-
-fn forward_uri<B>(forward_url: &str, req: &Request<B>) -> Uri {
-    let forward_uri = match req.uri().query() {
-        Some(query) => format!("{}{}?{}", forward_url, req.uri().path(), query),
-        None => format!("{}{}", forward_url, req.uri().path()),
-    };
-
-    Uri::from_str(forward_uri.as_str()).unwrap()
 }
 
 fn strip_hbh(headers: &HeaderMap<HeaderValue>) -> HeaderMap<HeaderValue> {

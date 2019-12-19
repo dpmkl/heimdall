@@ -17,7 +17,7 @@ pub fn rewrite_uri(uri: Uri) -> Uri {
         .authority(
             parts
                 .authority
-                .unwrap_or(Authority::from_static("localhost")),
+                .unwrap_or_else(|| Authority::from_static("localhost")),
         )
         .path_and_query(parts.path_and_query.unwrap())
         .build()
@@ -30,6 +30,28 @@ mod tests {
     fn check_rewrite_uri() {
         use super::rewrite_uri;
         use hyper::http::Uri;
+        use std::str::FromStr;
+
+        assert_eq!(
+            rewrite_uri(Uri::from_str("http://www.foo.bar").unwrap()),
+            Uri::from_str("https://www.foo.bar").unwrap()
+        );
+        assert_eq!(
+            rewrite_uri(Uri::from_str("https://www.foo.bar").unwrap()),
+            Uri::from_str("https://www.foo.bar").unwrap()
+        );
+        assert_eq!(
+            rewrite_uri(Uri::from_str("http://www.foo.bar/?foo=bar").unwrap()),
+            Uri::from_str("https://www.foo.bar/?foo=bar").unwrap()
+        );
+        assert_eq!(
+            rewrite_uri(Uri::from_str("http://www.foo.bar/qwerty?foo=bar").unwrap()),
+            Uri::from_str("https://www.foo.bar/qwerty?foo=bar").unwrap()
+        );
+        assert_eq!(
+            rewrite_uri(Uri::from_str("http://localhost").unwrap()),
+            Uri::from_str("https://localhost").unwrap()
+        );
 
         let uri = "http://www.rust-lang.org/".parse::<Uri>().unwrap();
         let uri = rewrite_uri(uri);

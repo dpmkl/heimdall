@@ -7,12 +7,14 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 
 fn make_path(path: String) -> String {
-    let mut path = path.replace("//", "/");
-    if !path.starts_with('/') {
-        path = format!("/{}", path);
-    }
-    if path.ends_with('/') {
-        path.remove(path.len() - 1);
+    let path = path.replace("//", "/");
+    let mut path = if !path.starts_with('/') {
+        format!("/{}", path)
+    } else {
+        path
+    };
+    if path.ends_with('/') && path.len() > 1 {
+        path.truncate(path.len() - 1);
     }
     path
 }
@@ -128,7 +130,7 @@ impl Router {
 
 #[cfg(test)]
 mod tests {
-    use super::{AllowedMethods, Router, RouterResult};
+    use super::{make_path, AllowedMethods, Router, RouterResult};
     use hyper::{Body, Method, Request, Uri};
 
     fn build_req(uri: &str, method: hyper::Method) -> Request<Body> {
@@ -137,6 +139,15 @@ mod tests {
             .method(method)
             .body(Body::from("asdf"))
             .unwrap()
+    }
+
+    #[test]
+    fn config_path() {
+        assert_eq!(make_path("/".to_owned()), "/".to_owned());
+        assert_eq!(make_path("asdf".to_owned()), "/asdf".to_owned());
+        assert_eq!(make_path("//asdf".to_owned()), "/asdf".to_owned());
+        assert_eq!(make_path("foo/bar/".to_owned()), "/foo/bar".to_owned());
+        assert_eq!(make_path("foo/bar".to_owned()), "/foo/bar".to_owned());
     }
 
     #[test]

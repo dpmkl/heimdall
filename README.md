@@ -1,4 +1,7 @@
 # heimdall - a https reverse proxy #
+[![License:MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+
 This project is WIP, lots of stuff to do for production use, and depending on hyper to move to futures 0.2 ( 1.0 in the long run ).
 
 Heimdall is a https reverse proxy to act as a single gateway for multiple http sites, requiring only a single https setup. It utlizies hyper for http/2 handling  based on async/await. 

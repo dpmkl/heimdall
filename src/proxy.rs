@@ -39,19 +39,54 @@ fn strip_hbh(headers: &HeaderMap<HeaderValue>) -> HeaderMap<HeaderValue> {
     result
 }
 
+lazy_static! {
+    static ref HBH_HEADERS: Vec<Ascii<&'static str>> = vec![
+        Ascii::new("Connection"),
+        Ascii::new("Keep-Alive"),
+        Ascii::new("Proxy-Authenticate"),
+        Ascii::new("Proxy-Authorization"),
+        Ascii::new("Te"),
+        Ascii::new("Trailers"),
+        Ascii::new("Transfer-Encoding"),
+        Ascii::new("Upgrade"),
+    ];
+}
+
 fn is_hbh_header(name: &str) -> bool {
-    lazy_static! {
-        static ref HBH_HEADERS: Vec<Ascii<&'static str>> = vec![
-            Ascii::new("Connection"),
-            Ascii::new("Keep-Alive"),
-            Ascii::new("Proxy-Authenticate"),
-            Ascii::new("Proxy-Authorization"),
-            Ascii::new("Te"),
-            Ascii::new("Trailers"),
-            Ascii::new("Transfer-Encoding"),
-            Ascii::new("Upgrade"),
-        ];
+    HBH_HEADERS.iter().any(|h| h == &name)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{strip_hbh, HBH_HEADERS};
+    use hyper::header::{HeaderMap, HeaderValue};
+
+    fn headers_map() -> HeaderMap<HeaderValue> {
+        let mut headers = HeaderMap::new();
+        headers.insert("CONNECTION", "val: T".parse().unwrap());
+        headers.insert("keep-alive", "val: T".parse().unwrap());
+        headers.insert("PROXY-Authenticate", "val: T".parse().unwrap());
+        headers.insert("Proxy-Authorization", "val: T".parse().unwrap());
+        headers.insert("te", "val: T".parse().unwrap());
+        headers.insert("TRAILERS", "val: T".parse().unwrap());
+        headers.insert("te", "val: T".parse().unwrap());
+        headers.insert("Transfer-Encoding", "val: T".parse().unwrap());
+        headers.insert("Upgrade", "val: T".parse().unwrap());
+        headers
     }
 
-    HBH_HEADERS.iter().any(|h| h == &name)
+    #[test]
+    fn strip_headers() {
+        let headers = headers_map();
+        assert_eq!(headers.len(), HBH_HEADERS.len());
+        assert_eq!(strip_hbh(&headers), HeaderMap::new());
+
+        const HEADER: &str = "myheader";
+        let mut headers = headers_map();
+        headers.insert(HEADER, HEADER.parse().unwrap());
+        assert_eq!(headers.len(), HBH_HEADERS.len() + 1);
+        let headers = strip_hbh(&headers);
+        assert_eq!(headers.len(), 1);
+        assert_eq!(headers[HEADER], HEADER);
+    }
 }

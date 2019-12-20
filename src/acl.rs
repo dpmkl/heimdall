@@ -36,3 +36,41 @@ pub fn parse_allowed_methods(allowed_methods: Vec<String>) -> AllowedMethods {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::parse_allowed_methods;
+    use super::AllowedMethods;
+    use hyper::Method;
+    #[test]
+    fn valid_acl() {
+        let allowed = parse_allowed_methods(vec!["GET".to_owned()]);
+        assert_eq!(allowed.contains(&Method::GET), true);
+        assert_eq!(allowed.contains(&Method::PATCH), false);
+
+        assert_eq!(parse_allowed_methods(vec![]), AllowedMethods::Any);
+        let all_methods = vec![
+            Method::OPTIONS,
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::DELETE,
+            Method::HEAD,
+            Method::TRACE,
+            Method::CONNECT,
+            Method::PATCH,
+        ];
+        let methods = parse_allowed_methods(vec![
+            "Options".to_owned(),
+            "GET".to_owned(),
+            "POST".to_owned(),
+            "pUT".to_owned(),
+            "delete".to_owned(),
+            "Head".to_owned(),
+            "trace".to_owned(),
+            "Connect".to_owned(),
+            "patch".to_owned(),
+        ]);
+        assert_eq!(AllowedMethods::Only(all_methods), methods);
+    }
+}

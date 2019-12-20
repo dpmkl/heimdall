@@ -2,6 +2,7 @@ use crate::config;
 use crate::config::Config;
 use clap::{App, AppSettings, Arg, SubCommand};
 
+#[cfg_attr(tarpaulin, skip)]
 pub fn run() -> Option<Config> {
     let matches = App::new("heimdall")
         .setting(AppSettings::ArgRequiredElseHelp)

@@ -17,7 +17,8 @@ pub struct Config {
     pub listen: SocketAddr,
     pub cert_file: String,
     pub cert_pass: Option<String>,
-    pub redirect_http: bool,
+    pub redirect_to_https: bool,
+    pub acme_web_root: Option<String>,
     pub routes: Vec<RouteDefinition>,
 }
 
@@ -41,7 +42,8 @@ impl Default for Config {
             listen: "0.0.0.0:8443".parse().unwrap(),
             cert_file: "identity.p12".to_owned(),
             cert_pass: Some("mypass".to_owned()),
-            redirect_http: false,
+            redirect_to_https: false,
+            acme_web_root: None,
             routes,
         }
     }

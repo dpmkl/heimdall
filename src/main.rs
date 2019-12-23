@@ -153,6 +153,7 @@ async fn main() {
             }
         });
 
+        let addr = config.auxiliary_listen.unwrap_or("0.0.0.0:80".parse().unwrap());
         let http_server = Server::bind(&addr).serve(util_service);
         let (http, https) = futures::join!(http_server, tls_server);
         if let Err(err) = http {

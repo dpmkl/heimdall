@@ -34,7 +34,7 @@ pub fn rewrite_uri_scheme(uri: Uri) -> Uri {
 // First '.well-known', second 'acme-challenge', the third being the token
 // Example challenge:
 //   http://domain/.well-known/acme-challenge/HGr8U1IeTW4kY_Z6UIyaakzOkyQgPr_7ArlLgtZE8SX
-// Returns file name of the token as PathBuf
+// Returns file name of the token as String
 pub fn is_acme_challenge(request: &Request<Body>) -> Option<String> {
     const ACME_FIRST: &str = ".well-known";
     const ACME_SECOND: &str = "acme-challenge";

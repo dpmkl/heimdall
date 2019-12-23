@@ -19,6 +19,7 @@ pub struct Config {
     pub cert_pass: Option<String>,
     pub redirect_to_https: bool,
     pub acme_web_root: Option<String>,
+    pub auxiliary_listen: Option<SocketAddr>,
     pub routes: Vec<RouteDefinition>,
 }
 
@@ -44,6 +45,7 @@ impl Default for Config {
             cert_pass: Some("mypass".to_owned()),
             redirect_to_https: false,
             acme_web_root: None,
+            auxiliary_listen: None,
             routes,
         }
     }

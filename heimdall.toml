@@ -1,7 +1,8 @@
 listen = '0.0.0.0:8443'
 cert_file = 'identity.p12'
 cert_pass = 'mypass'
-redirect_http = false
+redirect_to_https = true
+acme_web_root = '/tmp/acme'
 
 [[routes]]
 source = '/'

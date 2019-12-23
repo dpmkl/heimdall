@@ -1,4 +1,4 @@
-use crate::util::{load_cert, rewrite_uri};
+use crate::util::{get_token, is_acme_challenge, load_cert, rewrite_uri_scheme};
 use futures_util::stream::StreamExt;
 use hyper::server::{conn::Http as HyperHttp, Builder};
 use hyper::service::{make_service_fn, service_fn};
@@ -17,7 +17,7 @@ mod router;
 use router::{Router, RouterResult};
 mod util;
 
-async fn process(
+async fn handle_proxy(
     req: Request<Body>,
     peer_ip: IpAddr,
     router: Router,
@@ -38,13 +38,48 @@ async fn process(
     }
 }
 
-async fn redirect_http(request: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+#[allow(clippy::unnecessary_unwrap)]
+async fn handle_auxiliary(
+    request: Request<Body>,
+    http_redirect: bool,
+    acme_web_root: Option<String>,
+) -> hyper::Result<Response<Body>> {
+    let token = is_acme_challenge(&request);
+    if token.is_some() && acme_web_root.is_some() {
+        if let Some(token) = get_token(&acme_web_root.unwrap(), &token.unwrap()) {
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .body(Body::from(token))
+                .unwrap())
+        } else {
+            Ok(Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Body::from("Token not found!"))
+                .unwrap())
+        }
+    } else if http_redirect {
+        redirect_to_https(request).await
+    } else {
+        invalid_request().await
+    }
+}
+
+async fn redirect_to_https(request: Request<Body>) -> Result<Response<Body>, hyper::Error> {
     let (parts, _) = request.into_parts();
     Ok(Response::builder()
         .status(StatusCode::MOVED_PERMANENTLY)
-        .header("Location", rewrite_uri(parts.uri).to_string())
+        .header("Location", rewrite_uri_scheme(parts.uri).to_string())
         .body(Body::from("Redirect to https"))
         .unwrap())
+}
+
+async fn invalid_request() -> Result<Response<Body>, hyper::Error> {
+    Ok::<_, hyper::Error>(
+        Response::builder()
+            .status(StatusCode::FORBIDDEN)
+            .body(Body::from("Invalid request!"))
+            .unwrap(),
+    )
 }
 
 #[tokio::main]
@@ -75,13 +110,17 @@ async fn main() {
     };
     let incoming = listener.incoming();
 
-    let service = make_service_fn(move |stream: &TlsStream<TcpStream>| {
+    let proxy_service = make_service_fn(move |stream: &TlsStream<TcpStream>| {
         let router = router.clone();
         let peer = stream.get_ref().peer_addr().unwrap().ip();
-        async move { Ok::<_, hyper::Error>(service_fn(move |req| process(req, peer, router.clone()))) }
+        async move {
+            Ok::<_, hyper::Error>(service_fn(move |req| {
+                handle_proxy(req, peer, router.clone())
+            }))
+        }
     });
 
-    let server = Builder::new(
+    let tls_server = Builder::new(
         hyper::server::accept::from_stream(incoming.filter_map(|socket| async {
             match socket {
                 Ok(stream) => match tls.clone().accept(stream).await {
@@ -99,21 +138,33 @@ async fn main() {
         })),
         HyperHttp::new(),
     )
-    .serve(service);
+    .serve(proxy_service);
 
-    if config.redirect_http {
-        let addr = ([0, 0, 0, 0], 80).into();
-        let redirector = Server::bind(&addr).serve(make_service_fn(|_| async {
-            Ok::<_, hyper::Error>(service_fn(redirect_http))
-        }));
-        let (http, https) = futures::join!(redirector, server);
+    let https_upgrade = config.redirect_to_https;
+    let acme_web_root = config.acme_web_root.clone();
+    if https_upgrade || acme_web_root.is_some() {
+        let util_service = make_service_fn(move |_| {
+            let acme_web_root = acme_web_root.clone();
+            async move {
+                let acme_web_root = acme_web_root.clone();
+                Ok::<_, hyper::Error>(service_fn(move |req| {
+                    handle_auxiliary(req, https_upgrade, acme_web_root.clone())
+                }))
+            }
+        });
+
+        let addr = config
+            .auxiliary_listen
+            .unwrap_or("0.0.0.0:80".parse().unwrap());
+        let http_server = Server::bind(&addr).serve(util_service);
+        let (http, https) = futures::join!(http_server, tls_server);
         if let Err(err) = http {
             error!("Error during http server execution! {}", err);
         }
         if let Err(err) = https {
             error!("Error during https server execution! {}", err);
         }
-    } else if let Err(err) = server.await {
+    } else if let Err(err) = tls_server.await {
         error!("Error during https server execution! {}", err);
     };
 }

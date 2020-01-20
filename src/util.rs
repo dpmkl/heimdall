@@ -1,18 +1,10 @@
 use hyper::http::uri::{Authority, Scheme};
 use hyper::http::Uri;
 use hyper::{Body, Method, Request};
-use native_tls::Identity;
 use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-
-pub fn load_cert(file: &str, pass: &str) -> Identity {
-    let mut file = std::fs::File::open(file).unwrap();
-    let mut identity = vec![];
-    file.read_to_end(&mut identity).unwrap();
-    Identity::from_pkcs12(&identity, &pass).unwrap()
-}
 
 // Upgrade the uri scheme from HTTP to HTTPS
 pub fn rewrite_uri_scheme(uri: Uri) -> Uri {

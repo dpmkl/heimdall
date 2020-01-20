@@ -1,10 +1,9 @@
 use crate::util::{get_token, is_acme_challenge, rewrite_uri_scheme};
-use futures_util::future::TryFutureExt;
 use futures_util::stream::StreamExt;
-use futures_util::stream::TryStreamExt;
+use hyper::server::{conn::Http as HyperHttp, Builder};
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server, StatusCode};
-use log::error;
+use log::{error, info};
 use std::net::IpAddr;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_rustls::{server::TlsStream, TlsAcceptor};
@@ -16,7 +15,6 @@ mod proxy;
 mod router;
 use router::{Router, RouterResult};
 mod tls;
-use tls::HyperAcceptor;
 mod util;
 
 async fn handle_proxy(
@@ -111,17 +109,7 @@ async fn main() {
         Ok(tcp) => tcp,
     };
     let tls_acceptor = TlsAcceptor::from(tls_cfg);
-    let tls_incoming = tcp
-        .incoming()
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("TCP error: {:?}", e)))
-        .and_then(move |s| {
-            tls_acceptor.accept(s).map_err(|e| {
-                error!("[!] Client-connection error! {}", e);
-                std::io::Error::new(std::io::ErrorKind::Other, format!("TLS error: {:?}", e))
-            })
-        })
-        .boxed();
-
+    let tls_incoming = tcp.incoming();
     let proxy_service = make_service_fn(move |stream: &TlsStream<TcpStream>| {
         let router = router.clone();
         let peer = stream.get_ref().0.peer_addr().unwrap().ip();
@@ -131,14 +119,31 @@ async fn main() {
             }))
         }
     });
-
-    let tls_server = Server::builder(HyperAcceptor {
-        acceptor: tls_incoming,
-    })
+    let tls_server = Builder::new(
+        hyper::server::accept::from_stream(tls_incoming.filter_map(|socket| async {
+            match socket {
+                Ok(stream) => match tls_acceptor.accept(stream).await {
+                    Ok(val) => Some(Ok::<_, hyper::Error>(val)),
+                    Err(err) => {
+                        error!("Tls handshake error! {}", err);
+                        None
+                    }
+                },
+                Err(err) => {
+                    error!("Tcp handshake error! {}", err);
+                    None
+                }
+            }
+        })),
+        HyperHttp::new(),
+    )
     .serve(proxy_service);
 
     let https_upgrade = config.redirect_to_https;
     let acme_web_root = config.acme_web_root.clone();
+
+    info!("Starting up ");
+
     if https_upgrade || acme_web_root.is_some() {
         let util_service = make_service_fn(move |_| {
             let acme_web_root = acme_web_root.clone();

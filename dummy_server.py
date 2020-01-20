@@ -4,7 +4,7 @@ import SimpleHTTPServer
 import SocketServer
 import logging
 
-PORT = 17571
+PORT = 8000
 
 class GetHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def do_GET(self):

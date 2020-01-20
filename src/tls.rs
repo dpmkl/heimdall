@@ -1,30 +1,8 @@
 use crate::config::Config;
-use core::task::{Context, Poll};
-use futures_util::stream::Stream;
-use hyper::server::accept::Accept;
 use log::error;
 use rustls::internal::pemfile;
 use rustls::ServerConfig;
-use std::pin::Pin;
 use std::{fs, io, sync::Arc};
-use tokio::net::TcpStream;
-use tokio_rustls::server::TlsStream;
-
-pub struct HyperAcceptor<'a> {
-    pub acceptor: Pin<Box<dyn Stream<Item = Result<TlsStream<TcpStream>, io::Error>> + 'a>>,
-}
-
-impl Accept for HyperAcceptor<'_> {
-    type Conn = TlsStream<TcpStream>;
-    type Error = io::Error;
-
-    fn poll_accept(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context,
-    ) -> Poll<Option<Result<Self::Conn, Self::Error>>> {
-        Pin::new(&mut self.acceptor).poll_next(cx)
-    }
-}
 
 pub fn create_config(config: &Config) -> Option<Arc<ServerConfig>> {
     let certs = match load_certs(&config.cert_file) {
@@ -46,7 +24,6 @@ pub fn create_config(config: &Config) -> Option<Arc<ServerConfig>> {
         error!("Could not setup TLS! {}", err);
         return None;
     }
-    cfg.set_protocols(&[b"h2".to_vec(), b"http/1.1".to_vec()]);
     Some(Arc::new(cfg))
 }
 

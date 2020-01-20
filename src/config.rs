@@ -19,7 +19,6 @@ pub struct Config {
     pub pkey_file: String,
     pub redirect_to_https: bool,
     pub acme_web_root: Option<String>,
-    pub auxiliary_listen: Option<SocketAddr>,
     pub routes: Vec<RouteDefinition>,
 }
 
@@ -40,12 +39,11 @@ impl Default for Config {
             allowed_methods: methods,
         });
         Self {
-            listen: "0.0.0.0:8443".parse().unwrap(),
+            listen: "0.0.0.0:443".parse().unwrap(),
             cert_file: "fullchain.pem".to_owned(),
             pkey_file: "privkey.pem".to_owned(),
             redirect_to_https: false,
             acme_web_root: None,
-            auxiliary_listen: None,
             routes,
         }
     }

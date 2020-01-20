@@ -1,0 +1,14 @@
+[Unit] 
+Description=The heimdall reverse proxy server 
+After=network.target nss-lookup.target 
+
+[Service] 
+Type=exec
+PIDFile=/run/heimdall.pid
+ExecStartPre=/usr/bin/rm -f /run/heimdall.pid 
+ExecStart=/usr/bin/heimdall run /etc/heimdall.toml 
+ExecReload=/bin/kill -s HUP $MAINPID
+KillSignal=SIGQUIT
+
+[Install]
+WantedBy=multi-user.target 

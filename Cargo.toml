@@ -25,3 +25,12 @@ toml = "0.5"
 tokio = { version = "0.2", features = ["full"] }
 tokio-rustls = "0.12"
 unicase = "2.5"
+
+[package.metadata.rpm.cargo]
+buildflags = ["--release"]
+
+[package.metadata.rpm.targets]
+heimdall = { path = "/usr/bin/heimdall" }
+
+[package.metadata.rpm.files]
+"heimdall.service" = { path = "/usr/lib/systemd/system/heimdall.service" }

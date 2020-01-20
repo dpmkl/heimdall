@@ -16,7 +16,7 @@ pub struct RouteDefinition {
 pub struct Config {
     pub listen: SocketAddr,
     pub cert_file: String,
-    pub cert_pass: Option<String>,
+    pub pkey_file: String,
     pub redirect_to_https: bool,
     pub acme_web_root: Option<String>,
     pub auxiliary_listen: Option<SocketAddr>,
@@ -41,8 +41,8 @@ impl Default for Config {
         });
         Self {
             listen: "0.0.0.0:8443".parse().unwrap(),
-            cert_file: "identity.p12".to_owned(),
-            cert_pass: Some("mypass".to_owned()),
+            cert_file: "fullchain.pem".to_owned(),
+            pkey_file: "privkey.pem".to_owned(),
             redirect_to_https: false,
             acme_web_root: None,
             auxiliary_listen: None,
